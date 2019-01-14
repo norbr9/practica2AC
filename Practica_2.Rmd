@@ -127,6 +127,16 @@ Un tipo de imagen 1 se codifica de la forma: 0 1 0 0 0 0 0 0 0.
 
 
 # MLP Convencional
+Primero debemos crear nuestro modelo secuencial. Las capas de red se definen desde la entrada a la salida, definiendo así la dirección del flujo de datos. Este modelo está definido por capas y la salida de una pasa a las entradas de las siguientes mediante una tubería.
+
+```{r}
+model = keras_model_sequential()
+model %>%
+  layer_dense(units = 32, input_shape = c(3072)) %>%
+  layer_activation('relu') %>%
+  layer_dense(units = 10) %>%
+  layer_activation('softmax')
+```
 
 
 
