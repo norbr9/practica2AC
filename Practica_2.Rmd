@@ -9,22 +9,127 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Introducción
+El proyecto a realizar trata de un estudio entre una red MLP convencional y una red de convolución. Se realizara una comparación con la ayuda de un conjunto de datos: CIFAR-10.
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Nuestra red convolucional está formada por dos tipos de capas: convolución y pooling. Gracias a esto deberíamos obtener mejores resultados durante el aprendizaje en compración con la red MLP, especificamente en el accuracy.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+En los siguientes apartados se estudiara el funcionamientos de las tecnicas mecionadas ateriormente y se compraran los resultados para ver si se cumples nuestras suposiciones sobre el funcionamiento.
 
-```{r cars}
-summary(cars)
+
+
+# Librerias necesarias 
+```{r}
+library(caret)
+library(keras)
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+# Conjunto CIFAR-10
+Se cargan los datos y se muestran
+
+```{r}
+set.seed(12345)
+dswsize = 10000
+dsevalwsize = 2000
+c <- dataset_cifar10()
+cifar10 <- c
+dssize = 50000
+mask = sample(1:dssize,dswsize)
+cifar10$train$x = cifar10$train$x[mask,,,]
+cifar10$train$y = cifar10$train$y[mask,]
+dssizeeval = 10000
+mask = sample(1:dssizeeval,dsevalwsize)
+cifar10$test$x = cifar10$test$x[mask,,,]
+cifar10$test$y = cifar10$test$y[mask,]
+str(cifar10)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Con esto hemos creado el modelo de datos. Se puede ver que hay dos conjuntos: train y test. El conjunto de entrenamiento esta formado por 1000 muestras y tiene imágenes de 32 x 32 (dimesiones) y 3 canales de color RGB, mientras que el test está formado por 2000 muestras.
+
+
+Se muestran los ejemplos que hay por clase en el conjunto train
+
+```{r}
+barplot(table(cifar10$train$y),main="Proporción de tipos de imágenes en cifar10 (training data)",
+        xlab="Tipos de imágenes")
+```
+
+
+Y en el conjunto test
+```{r}
+barplot(table(cifar10$test$y),main="Proporción de tipos de imágenes en cifar10 (test data)",
+        xlab="Tipos de imágenes")
+```
+
+Se puede observar que existe una proporcionalidad similar entre los ejemplos de ambos conjuntos
+
+
+
+Se aplica una transformación a los conjuntos.
+
+```{r}
+x_train <- cifar10$train$x
+y_train <- cifar10$train$y
+x_test <- cifar10$test$x
+y_test <- cifar10$test$y
+```
+
+
+Y ahora hacemos reshape para generar arrays en el formato que usará R. R alamacena las cosas de forma lineal, por lo que la matriz genera 3072 índices, que son las dimensiones del array.
+
+```{r}
+x_train = array_reshape(x_train,c(nrow(x_train), 3072))
+x_test = array_reshape(x_test,c(nrow(x_test), 3072))
+```
+
+Seguidamente, comprobamos la separabilidad de los objetos usando un grafico PCA. Se usa el grafico PCA el conjunto test y se colorea cada digito en funcion del ejemplar a representar.
+
+```{r}
+n = 10000
+pca = prcomp(t(x_train[mask,]))
+cols = rainbow(10)
+colors = cols[1 + y_train[mask]]
+plot(pca$rotation[,1],pca$rotation[,2],col=colors,pch=19,
+     xlab="1er PCA",ylab="2o PCA",main=paste0("PCA plot, ",n," imágenes cifar10"))
+legend("topright",fill=cols,
+       title="Tipos de imágenes",
+       col=cols,
+       legend=0:9,cex=0.6)
+```
+
+
+Ahora normalizamos los colores en [0,1] dividiendo entre el valor 255, que seriá el maximo, para el conjunto x_train y x_test
+
+```{r}
+max(x_train)
+max(x_test)
+x_train <- x_train / 255
+x_test <- x_test / 255
+```
+
+
+
+Se convierten en datos categoricos y_train y y_test
+```{r}
+str(y_train)
+y_train[1]
+y_train[3]
+y_train <- to_categorical(y_train, 10)
+y_test <- to_categorical(y_test, 10)
+str(y_train)
+y_train[1,]
+y_train[3,]
+```
+
+Un tipo de imagen 1 se codifica de la forma: 0 1 0 0 0 0 0 0 0.
+
+
+# MLP Convencional
+
+
+
+
+
+
