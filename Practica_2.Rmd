@@ -138,7 +138,350 @@ model %>%
   layer_activation('softmax')
 ```
 
+Para empezar, la primera capa toma las entradas de los datos training y test, que generarn vectores de 3072 componentes por entrada. A parte, la capa de salida devuelve 10 posibles salidas, que corresponde a cada tipo de imagen en cuestión.
 
+Además cada nodo de la capa oculta introduce un sesgo que contiene un peso.
+
+En la capa oculta, la función sigmoide recopila información sobre todo pixel de la figura y los procesa.
+En la capa de la salida, la función softmax convierte toda la información entre la capa oculta y la de salida en una distribución de probabilidades para los 10 tipos de imágenes.
+
+Por otra parte, en el modelo secuencial se hara uso del operador %% para poder añadir en orden las capas. Se usara layer_dense para conectar los nodos de una capa anterior con la siguiente.
+
+
+
+Lanzamos el algoritmo como hemos explicado antes. Vamos a probar distintos hiperparametros para observar sus resultados. Primero cambioamos el tamaño del bach.
+
+```{r}
+bsize = c(16,32,64,128,256,512,1024)
+nepochs = 50
+h = 50
+accvvals = NULL
+acctvals = NULL
+h_final = 16
+acc = 0
+for(b in bsize){
+    set.seed(12345)
+    #Conectamos todos los nodos de la capa anterior con los de la siguiente
+    model = keras_model_sequential()
+    model %>%
+      layer_dense(units = h, activation = 'sigmoid', input_shape = c(3072)) %>%
+      layer_dense(units = 10, activation = 'softmax')
+    
+    #Compilamos el modelo
+    model %>% compile(
+      loss = 'categorical_crossentropy',
+      optimizer = 'adam',
+      metrics = c('accuracy')
+    )
+    
+    #Entrenamos el modelo
+    history = model %>% fit(
+      x_train, y_train,
+      epochs = nepochs,
+      batch_size = b,
+      validation_split = 0.2,
+      verbose = 0
+    )
+    
+    cat("Los errores de entrenamiento y evaluación para",b,"batch size son", history$metrics$loss[nepochs],"y",history$metrics$val_loss[nepochs],"\n")
+    cat("Valores de accuracy de entrenamiento y evaluación para",b,"batch size son", history$metrics$acc[nepochs],"y",history$metrics$val_acc[nepochs],"\n")
+    accvvals = c(accvvals,history$metrics$val_acc[nepochs])
+    acctvals = c(acctvals,history$metrics$acc[nepochs])
+    if(history$metrics$val_acc[nepochs]>acc){
+      acc = history$metrics$val_acc[nepochs]
+      b_final = b
+    }
+}
+ymin = min(c(accvvals,acctvals))
+plot(y=acctvals,x=bsize,ylab="Accuracy",xlab="batch size",main="Valores de accuracy para entrenamiento/test a través de tamaños de batch",col="blue",ylim=c(ymin,1),type="l")
+lines(x=bsize,y=accvvals,col="red")
+```
+
+A continuación cambiamos el número de nodos ocultos.
+
+```{r}
+nhidden = c(48,96,192,256,512)
+bsize = b_final
+nepochs = 50
+accvvals = NULL
+acctvals = NULL
+h_final = 48
+acc = 0
+for(h in nhidden){
+  set.seed(12345)
+  model = keras_model_sequential()
+  model %>%
+    layer_dense(units = h, activation = 'sigmoid', input_shape = c(3072)) %>%
+    layer_dense(units = 10, activation = 'softmax')
+  model %>% compile(
+    loss = 'categorical_crossentropy',
+    optimizer = 'adam',
+    metrics = c('accuracy')
+  )
+  history = model %>% fit(
+    x_train, y_train,
+    epochs = nepochs,
+    batch_size = bsize,
+    validation_split = 0.2,
+    verbose = 0
+  )
+  cat("Los errores de entrenamiento y evaluación para",h,"nodos son", history$metrics$loss[nepochs],"y", history$metrics$val_loss[nepochs],"\n")
+  cat("Los valores de accuracy de entrenamiento y evaluación para",h,"nodos son",history$metrics$acc[nepochs],"y",  history$metrics$val_acc[nepochs],"\n")
+  accvvals = c(accvvals,history$metrics$val_acc[nepochs])
+  acctvals = c(acctvals,history$metrics$acc[nepochs])
+  if(history$metrics$val_acc[nepochs]>acc){
+    acc = history$metrics$val_acc[nepochs]
+    h_final = h
+  }
+}
+ymin = min(c(accvvals,acctvals))
+plot(y=acctvals,x=nhidden,ylab="Accuracy",xlab="nodos ocultos",main="Valores de accuracy para entrenamiento/test a través epochs",col="blue",ylim=c(ymin,1),type="l")
+lines(x=nhidden,y=accvvals,col="red")
+```
+
+```{r}
+cat("Finalmente, los hiperparámetros escogidos son: bach size",b_final,"y número de nodos ocultos", h_final)
+```
+
+## Overfitting MLP
+
+Lanzamos la nueva red con los parámetros finales.
+
+```{r}
+set.seed(12345)
+  model = keras_model_sequential()
+  model %>%
+    layer_dense(units = h_final, activation = 'sigmoid', input_shape = c(3072)) %>%
+    layer_dense(units = 10, activation = 'softmax')
+  model %>% compile(
+    loss = 'categorical_crossentropy',
+    optimizer = 'adam',
+    metrics = c('accuracy')
+  )
+  history = model %>% fit(
+    x_train, y_train,
+    epochs = nepochs,
+    batch_size = b_final,
+    validation_split = 0.2,
+    verbose = 0
+  )
+```
+
+Mostramos graficamente los errores de entranamiento y validación a lo largo de los epochs
+
+```{r}
+vymax = max(c(history$metrics$loss,history$metrics$val_loss))
+plot(history$metrics$loss,main="Erores de entrenamiendo/validación para cifar10",col="blue", type="l",xlab="Epochs",ylab="Loss",ylim=c(0,vymax))
+lines(history$metrics$val_loss,col="red")
+```
+
+Vemos en los resultados que el error de validación empeora tras un núero de epochs concreto. Por lo que hemos cometido overfitting.
+
+
+Aplicamos varias técnicas para tratar el overfitting
+
+### L1
+#ref =https://towardsdatascience.com/l1-and-l2-regularization-methods-ce25e7fc831c
+La tecnica L1 de regularización o tambien llamada Lasso Regression, límita la capacidad e la red actuando en su algoritmo de entranamiento, penalizando los pesos grandes en función de sus valores abosultos.
+
+
+```{r}
+model_b = keras_model_sequential()
+model_b %>%
+  layer_dense(units = h_final,
+              kernel_regularizer = regularizer_l1(0.001),
+              input_shape = c(3072)) %>%
+  layer_activation("sigmoid") %>%
+  layer_dense(units = 10) %>%
+  layer_activation("softmax")
+summary(model_b)
+
+model_b %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = 'adam',
+  metrics = c('accuracy')
+)
+
+history_b = model_b %>% fit(
+  x_train, y_train,
+  epochs = 50,
+  batch_size = b_final,
+  validation_split = 0.2,
+  verbose = 0)
+```
+
+
+###L2
+
+La técina L2 de regularización o también llamada Ridge Regression. Es una técnica muy parecida a L1 pero esta utiliza los cuadrados en lugar de los valores absolutos.
+
+```{r}
+model_c = keras_model_sequential()
+model_c %>%
+  layer_dense(units = h_final,
+              #Podemos usar regularizer_l1, regularizer_l2
+              #y regularizer_l1_l2
+              kernel_regularizer = regularizer_l2(0.001),
+              input_shape = c(3072)) %>%
+  layer_activation("sigmoid") %>%
+  layer_dense(units = 10) %>%
+  layer_activation("softmax")
+summary(model_c)
+
+model_c %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = 'adam',
+  metrics = c('accuracy')
+)
+history_c = model_c %>% fit(
+  x_train, y_train,
+  epochs = 50,
+  batch_size = b_final,
+  validation_split = 0.2,
+  verbose = 0)
+
+```
+
+### Dropout
+Esta tecnica consiste en establecer a 0 una fracción del input (establecida a 0.5) en cada actualización durante el proceso de entrenamiento, con lo que conseguimos prevenir el overfitting.
+
+```{r}
+model_d = keras_model_sequential()
+model_d %>%
+  layer_dense(units = h_final, activation="sigmoid",
+              input_shape = c(3072)) %>%
+  layer_dropout(rate=0.5) %>%
+  layer_dense(units = 10,activation="softmax") %>%
+  summary(model_d)
+
+model_d %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = 'adam',
+  metrics = c('accuracy')
+)
+history_d = model_d %>% fit(
+  x_train, y_train,
+  epochs = 50,
+  batch_size = b_final,
+  validation_split = 0.2,
+  verbose = 0)
+```
+
+
+
+
+Y ahora comparamos los distintos modelos
+
+```{r}
+vymax = max(c(history$metrics$loss,
+              history$metrics$val_loss,
+              history_b$metrics$loss,
+              history_b$metrics$val_loss,
+              history_c$metrics$loss,
+              history_c$metrics$val_loss,
+              history_d$metrics$loss,
+              history_d$metrics$val_loss))
+plot(history$metrics$loss,main="Training/Validation errors for small cifar10",col="blue",
+     type="l",xlab="Epochs",ylab="Loss",ylim=c(1.5,vymax))
+lines(history$metrics$val_loss,col="red")
+lines(history_b$metrics$loss,col="green")
+lines(history_b$metrics$val_loss,col="darkgreen")
+lines(history_c$metrics$loss,col="cyan")
+lines(history_c$metrics$val_loss,col="darkblue")
+lines(history_d$metrics$loss,col="darkviolet")
+lines(history_d$metrics$val_loss,col="darkred")
+legend("topright",fill=c("blue","red","green","darkgreen",
+                         "cyan","darkblue","darkviolet","darkred"),
+       title="Regularizaciones",
+       col=c("blue","red","green","darkgreen",
+             "cyan","darkblue","darkviolet","darkred"),
+       legend=c("Training (no reg)",
+                "Validation (no reg)",
+                "Training (L1)",
+                "Validation (L1)",
+                "Training (L2)",
+                "Validation (L2)",
+                "Training (Dropout)",
+                "Validation (Dropout)"),cex=0.5)
+```
+
+
+Evaluamos con el conjunto test
+
+```{r}
+results = NULL
+results[["noreg"]] = evaluate(model,x_test,y_test)
+results[["l1"]] = evaluate(model_b,x_test,y_test)
+results[["l2"]] = evaluate(model_c,x_test,y_test)
+results[["dropout"]] = evaluate(model_d,x_test,y_test)
+accs = unlist(lapply(results,function(x){ return(x$acc)}))
+barplot(accs,
+        main="Accuracy",names.arg=names(results))
+print(accs)
+```
+
+
+### Crossvalidación para comprobar los resultados
+Despues de corregir el overfiting hay que asegurrar que el modelo mantiene el acurract mostrado, y para esto utilizamos crossvalidación.
+
+```{r}
+set.seed(12345)
+k=5
+nepochs = 50
+folds = createFolds(y=cifar10$train$y,k=k)
+allindex = 1:length(cifar10$train$y)
+accs = accsdrop = NULL
+for(i in 1:k){
+  eval_index = folds[[i]]
+  train_index = allindex[!(allindex %in% eval_index)]
+  cat("\nTrabajando en el pliegue",i,"con",length(train_index),"ejemplos de entrenamiento y",length(eval_index),"ejemplos de evaluación\n")
+  model_a = keras_model_sequential()
+  model_a %>%
+    layer_dense(units = h_final, activation = 'sigmoid', input_shape = c(3072)) %>%
+    layer_dense(units = 10, activation = 'softmax')
+  summary(model_a)
+  model_a %>% compile(
+    loss = 'categorical_crossentropy',
+    optimizer = 'adam',
+    metrics = c('accuracy')
+  )
+  history = model_a %>% fit(
+    x = x_train[train_index,],
+    y = y_train[train_index,],
+    validation_data = list(x_train[eval_index,],y_train[eval_index,]),
+    epochs = nepochs,
+    batch_size = b_final,
+    validation_split = 0.0,
+    verbose = 0
+  )
+  cat("Nuevo accuracy para MLP, pliegue",i,"=",history$metrics$val_acc[nepochs],"\n")
+  accs = c(accs,history$metrics$val_acc[nepochs])
+  model_d = keras_model_sequential()
+  model_d %>%
+    layer_dense(units = h_final, activation="sigmoid",
+    input_shape = c(3072)) %>%
+    layer_dropout(rate=0.5) %>%
+    layer_dense(units = 10,activation="softmax") %>%
+  summary(model_d)
+  model_d %>% compile(
+    loss = 'categorical_crossentropy',
+    optimizer = 'adam',
+    metrics = c('accuracy')
+  )
+  history_d = model_d %>% fit(
+    x = x_train[train_index,],
+    y = y_train[train_index,],
+    validation_data = list(x_train[eval_index,],y_train[eval_index,]),
+    epochs = nepochs,
+    batch_size = 1024,
+    validation_split = 0.0,
+    verbose = 0)
+  cat("Nuevo accuracy MLP + dropout, pliegue",i,"=",history_d$metrics$val_acc[nepochs],"\n")
+  accsdrop = c(accsdrop,history_d$metrics$val_acc[nepochs])
+}
+cat("El accuracy para MLP es",mean(accs),"\n")
+cat("El accuracy para MLP + dropout es",mean(accsdrop),"\n")
+```
 
 
 
