@@ -244,6 +244,7 @@ cat("Finalmente, los hiperparámetros escogidos son: bach size",b_final,"y núme
 ```
 
 ## Overfitting MLP
+El ovverfitting ocurre cuando el Backprpagation se dedica a ajustar la red a pequeñas particularidades locales en elos datos de entrenamien, irrelevantes para el problema general.
 
 Lanzamos la nueva red con los parámetros finales.
 
@@ -282,7 +283,7 @@ Aplicamos varias técnicas para tratar el overfitting
 
 ### L1
 #ref =https://towardsdatascience.com/l1-and-l2-regularization-methods-ce25e7fc831c
-La tecnica L1 de regularización o tambien llamada Lasso Regression, límita la capacidad e la red actuando en su algoritmo de entranamiento, penalizando los pesos grandes en función de sus valores abosultos.
+La tecnica L1 de regularización o tambien llamada Lasso Regression, límita la capacidad de la red actuando en su algoritmo de entranamiento, añadiendo en la funcion de perdida un coeficiente de penaliación en función de sus valores abosultos.
 
 
 ```{r}
@@ -343,7 +344,7 @@ history_c = model_c %>% fit(
 ```
 
 ### Dropout
-Esta tecnica consiste en establecer a 0 una fracción del input (establecida a 0.5) en cada actualización durante el proceso de entrenamiento, con lo que conseguimos prevenir el overfitting.
+Esta tecnica consiste en establecer a 0 una fracción del input (establecida al 50%) en cada actualización durante el proceso de entrenamiento, con lo que conseguimos prevenir el overfitting.
 
 ```{r}
 model_d = keras_model_sequential()
@@ -422,7 +423,9 @@ print(accs)
 
 
 ### Crossvalidación para comprobar los resultados
-Despues de corregir el overfiting hay que asegurrar que el modelo mantiene el acurract mostrado, y para esto utilizamos crossvalidación.
+Despues de corregir el overfiting hay que asegurrar que el modelo mantiene el acurracy mostrado, y para esto utilizamos crossvalidación.
+Es una tecnica utilizada para evaluar los resultados y garantizar que son idenpendientes de la partición entre el conjunt train y test.
+
 
 ```{r}
 set.seed(12345)
