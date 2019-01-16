@@ -489,3 +489,177 @@ cat("El accuracy para MLP + dropout es",mean(accsdrop),"\n")
 
 
 
+
+#Red de convolucción
+
+## Tratamiento de datos
+
+```{r}
+batch_size <- 128
+num_classes <- 10
+nepochs <- 50
+
+cifar10 <- c
+dssize = 10000
+mask = sample(1:dssize,dswsize)
+cifar10$train$x = cifar10$train$x[mask,,,]
+cifar10$train$y = cifar10$train$y[mask,]
+
+dssizeeval = 2000
+mask = sample(1:dssizeeval,dsevalwsize)
+cifar10$test$x = cifar10$test$x[mask,,,]
+cifar10$test$y = cifar10$test$y[mask,]
+```
+
+
+Dimensiones de la imagen de entrada
+```{r}
+img_rows <- 32
+img_cols <- 32
+x_train = array_reshape(x_train,c(nrow(x_train), img_rows, img_cols, 3))
+x_test = array_reshape(x_test,c(nrow(x_test), img_rows, img_cols, 3))
+input_shape <- c(img_rows, img_cols, 3)
+```
+
+
+```{r}
+nhidden = c(48,96,192,256,512)
+acc2 = 0
+h_final2 = 48
+accvvals2 = NULL
+acctvals2 = NULL
+for(h in nhidden){
+  model2 <- keras_model_sequential()
+  model2 %>%
+    layer_conv_2d(filters = 32, kernel_size = c(3,3), activation = 'relu',input_shape = input_shape) %>% 
+    layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = 'relu') %>% 
+    layer_max_pooling_2d(pool_size = c(2, 2)) %>% 
+    layer_dropout(rate = 0.25) %>% 
+    layer_flatten() %>% 
+    layer_dense(units = h, activation = 'relu') %>% 
+    layer_dropout(rate = 0.5) %>% 
+    layer_dense(units = num_classes, activation = 'softmax')
+  model2 %>% compile(
+    loss = loss_categorical_crossentropy,
+    optimizer = 'adam',
+    metrics = c('accuracy')
+  )
+  summary(model2)
+  
+  history2 = model2 %>% fit(
+    x_train, y_train,
+    batch_size = batch_size,
+    epochs = nepochs,
+    verbose = 0,
+    validation_data = list(x_test, y_test)
+  )
+  scores2 <- model2 %>% evaluate(
+    x_test, y_test, verbose = 0
+  )
+  cat("Los errores de entrenamiento y evaluación para ",h," nodos son", history2$metrics$loss[nepochs],"y", history2$metrics$val_loss[nepochs],"\n")
+  cat("Los valores de accuracy de entrenamiento y evaluaci?n para ",h," nodos son",history2$metrics$acc[nepochs],"y",  history2$metrics$val_acc[nepochs],"\n")
+  accvvals2 = c(accvvals2,history2$metrics$val_acc[nepochs])
+  acctvals2 = c(acctvals2,history2$metrics$acc[nepochs])
+  if(history2$metrics$val_acc[nepochs]>acc2){
+    acc2 = history2$metrics$val_acc[nepochs]
+    h_final2 = h
+  }
+}
+ymin = min(c(accvvals2,acctvals2))
+plot(y=acctvals2,x=nhidden,ylab="Accuracy",xlab="hidden nodes",main="Acuracy train/test a trav?s de epochs",col="blue",ylim=c(ymin,1),type="l")
+lines(x=nhidden,y=accvvals2,col="red")
+```
+
+
+```{r}
+bsize = c(16,32,64,128,256,512,1024)
+h = h_final2
+acc = 0
+b_final2 = 16
+acc2 = 0
+accvvals2 = NULL
+acctvals2 = NULL
+for(b in bsize){
+  model2 <- keras_model_sequential()
+  model2 %>%
+    layer_conv_2d(filters = 32, kernel_size = c(3,3), activation = 'relu',input_shape = input_shape) %>% 
+    layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = 'relu') %>% 
+    layer_max_pooling_2d(pool_size = c(2, 2)) %>% 
+    layer_dropout(rate = 0.25) %>% 
+    layer_flatten() %>% 
+    layer_dense(units = h, activation = 'relu') %>% 
+    layer_dropout(rate = 0.5) %>% 
+    layer_dense(units = num_classes, activation = 'softmax')
+  
+  model2 %>% compile( loss = loss_categorical_crossentropy, optimizer = 'adam', metrics = c('accuracy') )
+  summary(model2)
+  
+  history2 = model2 %>% fit(
+    x_train, y_train,
+    batch_size = b,
+    epochs = nepochs,
+    verbose = 0,
+    validation_data = list(x_test, y_test)
+  )
+  scores2 <- model2 %>% evaluate(
+    x_test, y_test, verbose = 0
+  )
+  cat("Los errores de entrenamiento y evaluación para ", b, " batch size son " , history2$metrics$loss[nepochs]," y ", history2$metrics$val_loss[nepochs], "\n")
+  cat("Los valores de accuracy de entrenamiento y evaluación para ", b, " batch size son ", history2$metrics$acc[nepochs], " y ", history2$metrics$val_acc[nepochs], "\n")
+  
+  accvvals2 = c(accvvals2,history2$metrics$val_acc[nepochs])
+  acctvals2 = c(acctvals2,history2$metrics$acc[nepochs])
+  
+  if(history2$metrics$val_acc[nepochs]>acc2){
+    acc2 = history2$metrics$val_acc[nepochs]
+    b_final2 = b
+  }
+}
+ymin = min(c(accvvals2,acctvals2))
+plot(y=acctvals2,x=bsize,ylab="Accuracy",xlab="batch size",main="Valores accuracy entrenamiento/test batch size",col="blue",ylim=c(ymin,1),type="l")
+lines(x=bsize,y=accvvals2,col="red")
+```
+
+```{r}
+cat("Hiperparámetros elegidos: bach size",b_final2," y número de nodos ocultos", h_final2)
+```
+
+
+
+## Crossvalidación para la red
+
+```{r}
+k=5
+folds = createFolds(y=cifar10$train$y,k=k)
+allindex = 1:length(cifar10$train$y)
+accs = accsdrop = NULL
+for(i in 1:k){
+   eval_index = folds[[i]]
+   train_index = allindex[!(allindex %in% eval_index)]
+   cat("Trabajando en el pliegue ",i," con ",length(train_index), " ejemplos de entrenamiento y ", length(eval_index),
+       " ejemplos de evaluación\n")
+   
+   model <- keras_model_sequential()
+   model %>%
+     layer_conv_2d(filters = 32, kernel_size = c(3,3), activation = 'relu',
+                   input_shape = input_shape) %>%
+     layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = 'relu') %>%
+     layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+     layer_dropout(rate = 0.25) %>%
+     layer_flatten() %>%
+     layer_dense(units = h_final2, activation = 'relu') %>%
+     layer_dropout(rate = 0.5) %>%
+     layer_dense(units = num_classes, activation = 'softmax')
+   
+   summary(model)
+   model %>% compile( loss = loss_categorical_crossentropy, optimizer = 'adam', metrics = c('accuracy') )
+   
+   history = model %>% fit( x_train, y_train, batch_size=b_final2, epochs=nepochs, verbose=0,
+                            validation_data=list(x_train[eval_index,,,],y_train[eval_index,])
+   )
+  cat("Nuevo accuracy para CNN, pliegue",i,"=",history$metrics$val_acc[nepochs],"\n")
+  accsdrop = c(accsdrop,history$metrics$val_acc[nepochs])
+}
+cat("El accuracy para la CNN con dropout es",mean(accsdrop),"\n")
+```
+
