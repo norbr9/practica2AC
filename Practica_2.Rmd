@@ -14,7 +14,7 @@ El proyecto a realizar trata de un estudio entre una red MLP convencional y una 
 
 Nuestra red convolucional está formada por dos tipos de capas: convolución y pooling. Gracias a esto deberíamos obtener mejores resultados durante el aprendizaje en compración con la red MLP, especificamente en el accuracy.
 
-En los siguientes apartados se estudiara el funcionamientos de las tecnicas mecionadas ateriormente y se compraran los resultados para ver si se cumples nuestras suposiciones sobre el funcionamiento.
+En los siguientes apartados se estudiara el funcionamientos de las tecnicas mecionadas anteriormente y se compararan los resultados para ver si se cumplen nuestras suposiciones sobre el funcionamiento.
 
 
 
@@ -29,7 +29,7 @@ install_keras(tensorflow = "1.5")
 
 
 # Conjunto CIFAR-10
-Se cargan los datos y se muestran
+Se cargan los datos y se muestran.
 
 ```{r}
 set.seed(12345)
@@ -48,10 +48,10 @@ cifar10$test$y = cifar10$test$y[mask,]
 str(cifar10)
 ```
 
-Con esto hemos creado el modelo de datos. Se puede ver que hay dos conjuntos: train y test. El conjunto de entrenamiento esta formado por 1000 muestras y tiene imágenes de 32 x 32 (dimesiones) y 3 canales de color RGB, mientras que el test está formado por 2000 muestras.
+Con esto hemos creado el modelo de datos. Se puede ver que hay dos conjuntos: train y test. El conjunto de entrenamiento está formado por 1000 muestras y tiene imágenes de 32 x 32 (dimesiones) y 3 canales de color RGB, mientras que el test está formado por 2000 muestras.
 
 
-Se muestran los ejemplos que hay por clase en el conjunto train
+Se muestran los ejemplos que hay por clase en el conjunto train.
 
 ```{r}
 barplot(table(cifar10$train$y),main="Proporción de tipos de imágenes en cifar10 (training data)",
@@ -59,13 +59,13 @@ barplot(table(cifar10$train$y),main="Proporción de tipos de imágenes en cifar1
 ```
 
 
-Y en el conjunto test
+Y en el conjunto test.
 ```{r}
 barplot(table(cifar10$test$y),main="Proporción de tipos de imágenes en cifar10 (test data)",
         xlab="Tipos de imágenes")
 ```
 
-Se puede observar que existe una proporcionalidad similar entre los ejemplos de ambos conjuntos
+Se puede observar que existe una proporcionalidad similar entre los ejemplos de ambos conjuntos.
 
 
 
@@ -86,7 +86,7 @@ x_train = array_reshape(x_train,c(nrow(x_train), 3072))
 x_test = array_reshape(x_test,c(nrow(x_test), 3072))
 ```
 
-Seguidamente, comprobamos la separabilidad de los objetos usando un grafico PCA. Se usa el grafico PCA el conjunto test y se colorea cada digito en funcion del ejemplar a representar.
+Seguidamente, comprobamos la separabilidad de los objetos usando un gráfico PCA. Se usa el grafico PCA el conjunto test y se colorea cada dígito en funcion del ejemplar a representar.
 
 ```{r}
 n = 10000
@@ -102,7 +102,7 @@ legend("topright",fill=cols,
 ```
 
 
-Ahora normalizamos los colores en [0,1] dividiendo entre el valor 255, que seriá el maximo, para el conjunto x_train y x_test
+Ahora normalizamos los colores en [0,1] dividiendo entre el valor 255, que seriá el maximo, para el conjunto x_train y x_test.
 
 ```{r}
 max(x_train)
@@ -113,7 +113,7 @@ x_test <- x_test / 255
 
 
 
-Se convierten en datos categoricos y_train y y_test
+Se convierten en datos categóricos y_train y y_test.
 ```{r}
 str(y_train)
 y_train[1]
@@ -125,7 +125,7 @@ y_train[1,]
 y_train[3,]
 ```
 
-Un tipo de imagen 1 se codifica de la forma: 0 1 0 0 0 0 0 0 0.
+Ahora, por ejemplo, un tipo de imagen 1 se codifica de la forma: 0 1 0 0 0 0 0 0 0.
 
 
 # MLP Convencional
@@ -140,7 +140,7 @@ model %>%
   layer_activation('softmax')
 ```
 
-Para empezar, la primera capa toma las entradas de los datos training y test, que generarn vectores de 3072 componentes por entrada. A parte, la capa de salida devuelve 10 posibles salidas, que corresponde a cada tipo de imagen en cuestión.
+Para empezar, la primera capa toma las entradas de los datos training y test, que generarn vectores de 3072 componentes por entrada. A parte, la capa de salida devuelve 10 posibles salidas, que corresponden a cada tipo de imagen en cuestión.
 
 Además cada nodo de la capa oculta introduce un sesgo que contiene un peso.
 
@@ -151,7 +151,7 @@ Por otra parte, en el modelo secuencial se hara uso del operador %% para poder a
 
 
 
-Lanzamos el algoritmo como hemos explicado antes. Vamos a probar distintos hiperparametros para observar sus resultados. Primero cambioamos el tamaño del bach.
+Lanzamos el algoritmo como hemos explicado antes. Vamos a probar distintos hiperparámetros para observar sus resultados. Primero cambiamos el tamaño del bach.
 
 ```{r}
 bsize = c(16,32,64,128,256,512,1024)
@@ -246,7 +246,7 @@ cat("Finalmente, los hiperparámetros escogidos son: bach size",b_final,"y núme
 ```
 
 ## Overfitting MLP
-El ovverfitting ocurre cuando el Backprpagation se dedica a ajustar la red a pequeñas particularidades locales en elos datos de entrenamien, irrelevantes para el problema general.
+El ovverfitting ocurre cuando el Backpropagation se dedica a ajustar la red a pequeñas particularidades locales en los datos de entrenamiento, irrelevantes para el problema general.
 
 Lanzamos la nueva red con los parámetros finales.
 
@@ -270,7 +270,7 @@ set.seed(12345)
   )
 ```
 
-Mostramos graficamente los errores de entranamiento y validación a lo largo de los epochs
+Mostramos gráficamente los errores de entranamiento y validación a lo largo de los epochs.
 
 ```{r}
 vymax = max(c(history$metrics$loss,history$metrics$val_loss))
@@ -278,14 +278,14 @@ plot(history$metrics$loss,main="Erores de entrenamiendo/validación para cifar10
 lines(history$metrics$val_loss,col="red")
 ```
 
-Vemos en los resultados que el error de validación empeora tras un núero de epochs concreto. Por lo que hemos cometido overfitting.
+Vemos en los resultados que el error de validación empeora tras un número de epochs concreto. Por lo que hemos cometido overfitting.
 
 
 Aplicamos varias técnicas para tratar el overfitting
 
 ### L1
 #ref =https://towardsdatascience.com/l1-and-l2-regularization-methods-ce25e7fc831c
-La tecnica L1 de regularización o tambien llamada Lasso Regression, límita la capacidad de la red actuando en su algoritmo de entranamiento, añadiendo en la funcion de perdida un coeficiente de penaliación en función de sus valores abosultos.
+La tecnica L1 de regularización o tambien llamada Lasso Regression, limita la capacidad de la red actuando en su algoritmo de entrenamiento, añadiendo en la función de perdida un coeficiente de penaliación en función de sus valores abosultos.
 
 
 ```{r}
@@ -346,7 +346,7 @@ history_c = model_c %>% fit(
 ```
 
 ### Dropout
-Esta tecnica consiste en establecer a 0 una fracción del input (establecida al 50%) en cada actualización durante el proceso de entrenamiento, con lo que conseguimos prevenir el overfitting.
+Esta técnica consiste en establecer a 0 una fracción del input (establecida al 50%) en cada actualización durante el proceso de entrenamiento, con lo que conseguimos prevenir el overfitting.
 
 ```{r}
 model_d = keras_model_sequential()
@@ -425,8 +425,8 @@ print(accs)
 
 
 ### Crossvalidación para comprobar los resultados
-Despues de corregir el overfiting hay que asegurrar que el modelo mantiene el acurracy mostrado, y para esto utilizamos crossvalidación.
-Es una tecnica utilizada para evaluar los resultados y garantizar que son idenpendientes de la partición entre el conjunt train y test.
+Después de corregir el overfiting hay que asegurar que el modelo mantiene el acurracy mostrado, y para esto utilizamos la crosvalidación.
+Es una tecnica utilizada para evaluar los resultados y garantizar que son idenpendientes de la partición entre el conjunto train y test.
 
 
 ```{r}
