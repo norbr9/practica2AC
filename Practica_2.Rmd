@@ -22,6 +22,8 @@ En los siguientes apartados se estudiara el funcionamientos de las tecnicas meci
 ```{r}
 library(caret)
 library(keras)
+install_keras(tensorflow = "1.5")
+
 ```
 
 
@@ -490,55 +492,89 @@ cat("El accuracy para MLP + dropout es",mean(accsdrop),"\n")
 
 
 
-#Red de convolucción
+# 2. Red de convolución
 
 ## Tratamiento de datos
 
 ```{r}
-batch_size <- 128
-num_classes <- 10
-nepochs <- 50
-
-cifar10 <- c
-dssize = 10000
+# Conjunto de datos
+seed(12345)
+dswsize = 10000
+dsevalwsize = 2000
+cifar10 <- dataset_cifar10()
+dssize = 50000
 mask = sample(1:dssize,dswsize)
 cifar10$train$x = cifar10$train$x[mask,,,]
 cifar10$train$y = cifar10$train$y[mask,]
-
-dssizeeval = 2000
+dssizeeval = 10000
 mask = sample(1:dssizeeval,dsevalwsize)
 cifar10$test$x = cifar10$test$x[mask,,,]
 cifar10$test$y = cifar10$test$y[mask,]
 ```
 
 
-Dimensiones de la imagen de entrada
 ```{r}
+# Preparación de datos
+batch_size <- 128
+num_classes <- 10
+nepochs <- 20
+
+# Dimensiones de la imagen
 img_rows <- 32
 img_cols <- 32
-x_train = array_reshape(x_train,c(nrow(x_train), img_rows, img_cols, 3))
-x_test = array_reshape(x_test,c(nrow(x_test), img_rows, img_cols, 3))
-input_shape <- c(img_rows, img_cols, 3)
+
+```
+
+Obtenemos los conjuntos de entrenamiento y de evaluación.
+
+```{r}
+
+train_x <- cifar10$train$x
+train_y <- cifar10$train$y
+test_x <- cifar10$test$x
+test_y <- cifar10$test$y
+
+train_x <- array_reshape(train_x, c(nrow(train_x), img_rows, img_cols, 4))
+test_x <- array_reshape(test_x, c(nrow(test_x), img_rows, img_cols, 4))
+input_shape <- c(img_rows, img_cols, 4)
+
+# Normalizamos los colores en 0 y 1
+train_x <- train_x / 255
+test_x <- test_x / 255
+
+cat('x_train_shape:', dim(train_x), '\n')
+cat(nrow(train_x), 'train samples\n')
+cat(nrow(test_x), 'test samples\n')
+
+# Convert class vectors to binary class matrices
+train_y <- to_categorical(train_y, num_classes)
+test_y <- to_categorical(test_y, num_classes)
+
 ```
 
 
+# Definición del modelo
+
+
 ```{r}
-nhidden = c(48,96,192,256,512)
+nhidden = c(48,96,192)
 acc2 = 0
 h_final2 = 48
 accvvals2 = NULL
 acctvals2 = NULL
+
 for(h in nhidden){
   model2 <- keras_model_sequential()
   model2 %>%
-    layer_conv_2d(filters = 32, kernel_size = c(3,3), activation = 'relu',input_shape = input_shape) %>% 
-    layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = 'relu') %>% 
+    layer_conv_2d(filters = 32, kernel_size = c(4,4), activation = 'relu',input_shape = input_shape) %>% 
+    layer_conv_2d(filters = 64, kernel_size = c(4,4), activation = 'relu') %>% 
     layer_max_pooling_2d(pool_size = c(2, 2)) %>% 
     layer_dropout(rate = 0.25) %>% 
     layer_flatten() %>% 
     layer_dense(units = h, activation = 'relu') %>% 
     layer_dropout(rate = 0.5) %>% 
     layer_dense(units = num_classes, activation = 'softmax')
+  
   model2 %>% compile(
     loss = loss_categorical_crossentropy,
     optimizer = 'adam',
@@ -547,17 +583,19 @@ for(h in nhidden){
   summary(model2)
   
   history2 = model2 %>% fit(
-    x_train, y_train,
+    train_x, train_y,
     batch_size = batch_size,
     epochs = nepochs,
     verbose = 0,
-    validation_data = list(x_test, y_test)
+    validation_data = list(test_x, test_y)
   )
-  scores2 <- model2 %>% evaluate(
-    x_test, y_test, verbose = 0
-  )
-  cat("Los errores de entrenamiento y evaluación para ",h," nodos son", history2$metrics$loss[nepochs],"y", history2$metrics$val_loss[nepochs],"\n")
-  cat("Los valores de accuracy de entrenamiento y evaluaci?n para ",h," nodos son",history2$metrics$acc[nepochs],"y",  history2$metrics$val_acc[nepochs],"\n")
+  
+  scores2 <- model2 %>% evaluate(test_x, test_y, verbose = 0)
+  
+  
+  cat("Los errores de entrenamiento y evaluación para ",h," nodos son ", history2$metrics$loss[nepochs], " y ", history2$metrics$val_loss[nepochs],"\n")
+  cat("Los valores de accuracy de entrenamiento y evaluación para ",h," nodos son ", history2$metrics$acc[nepochs], " y ", history2$metrics$val_acc[nepochs],"\n")
+  
   accvvals2 = c(accvvals2,history2$metrics$val_acc[nepochs])
   acctvals2 = c(acctvals2,history2$metrics$acc[nepochs])
   if(history2$metrics$val_acc[nepochs]>acc2){
@@ -565,6 +603,7 @@ for(h in nhidden){
     h_final2 = h
   }
 }
+
 ymin = min(c(accvvals2,acctvals2))
 plot(y=acctvals2,x=nhidden,ylab="Accuracy",xlab="hidden nodes",main="Acuracy train/test a trav?s de epochs",col="blue",ylim=c(ymin,1),type="l")
 lines(x=nhidden,y=accvvals2,col="red")
@@ -572,7 +611,7 @@ lines(x=nhidden,y=accvvals2,col="red")
 
 
 ```{r}
-bsize = c(16,32,64,128,256,512,1024)
+bsize = c(256,512,1024)
 h = h_final2
 acc = 0
 b_final2 = 16
@@ -582,8 +621,8 @@ acctvals2 = NULL
 for(b in bsize){
   model2 <- keras_model_sequential()
   model2 %>%
-    layer_conv_2d(filters = 32, kernel_size = c(3,3), activation = 'relu',input_shape = input_shape) %>% 
-    layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = 'relu') %>% 
+    layer_conv_2d(filters = 32, kernel_size = c(4,4), activation = 'relu',input_shape = input_shape) %>% 
+    layer_conv_2d(filters = 64, kernel_size = c(4,4), activation = 'relu') %>% 
     layer_max_pooling_2d(pool_size = c(2, 2)) %>% 
     layer_dropout(rate = 0.25) %>% 
     layer_flatten() %>% 
@@ -595,14 +634,14 @@ for(b in bsize){
   summary(model2)
   
   history2 = model2 %>% fit(
-    x_train, y_train,
+    train_x, train_y,
     batch_size = b,
     epochs = nepochs,
     verbose = 0,
-    validation_data = list(x_test, y_test)
+    validation_data = list(test_x, test_y)
   )
   scores2 <- model2 %>% evaluate(
-    x_test, y_test, verbose = 0
+    test_x, test_y, verbose = 0
   )
   cat("Los errores de entrenamiento y evaluación para ", b, " batch size son " , history2$metrics$loss[nepochs]," y ", history2$metrics$val_loss[nepochs], "\n")
   cat("Los valores de accuracy de entrenamiento y evaluación para ", b, " batch size son ", history2$metrics$acc[nepochs], " y ", history2$metrics$val_acc[nepochs], "\n")
@@ -615,9 +654,10 @@ for(b in bsize){
     b_final2 = b
   }
 }
+
 ymin = min(c(accvvals2,acctvals2))
-plot(y=acctvals2,x=bsize,ylab="Accuracy",xlab="batch size",main="Valores accuracy entrenamiento/test batch size",col="blue",ylim=c(ymin,1),type="l")
-lines(x=bsize,y=accvvals2,col="red")
+plot(y=acctvals2, x=bsize, ylab="Accuracy", xlab="batch size", main="Valores accuracy entrenamiento/test batch size", col="blue", ylim=c(ymin,1), type="l")
+lines(x=bsize, y=accvvals2, col="red")
 ```
 
 ```{r}
@@ -641,9 +681,9 @@ for(i in 1:k){
    
    model <- keras_model_sequential()
    model %>%
-     layer_conv_2d(filters = 32, kernel_size = c(3,3), activation = 'relu',
+     layer_conv_2d(filters = 32, kernel_size = c(4,4), activation = 'relu',
                    input_shape = input_shape) %>%
-     layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = 'relu') %>%
+     layer_conv_2d(filters = 64, kernel_size = c(4,4), activation = 'relu') %>%
      layer_max_pooling_2d(pool_size = c(2, 2)) %>%
      layer_dropout(rate = 0.25) %>%
      layer_flatten() %>%
@@ -654,11 +694,11 @@ for(i in 1:k){
    summary(model)
    model %>% compile( loss = loss_categorical_crossentropy, optimizer = 'adam', metrics = c('accuracy') )
    
-   history = model %>% fit( x_train, y_train, batch_size=b_final2, epochs=nepochs, verbose=0,
-                            validation_data=list(x_train[eval_index,,,],y_train[eval_index,])
+   history = model %>% fit( train_x, train_y, batch_size=b_final2, epochs=nepochs, verbose=0,
+                            validation_data=list(train_x[eval_index,,,], train_y[eval_index,])
    )
   cat("Nuevo accuracy para CNN, pliegue",i,"=",history$metrics$val_acc[nepochs],"\n")
-  accsdrop = c(accsdrop,history$metrics$val_acc[nepochs])
+  accsdrop = c(accsdrop, history$metrics$val_acc[nepochs])
 }
 cat("El accuracy para la CNN con dropout es",mean(accsdrop),"\n")
 ```
