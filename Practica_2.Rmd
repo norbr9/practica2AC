@@ -1,7 +1,7 @@
 ---
-title: "Practica_2"
+title: "Práctica_2"
 author: "Norberto García Marín y María Soledad Pérez López"
-date: "January 14, 2019"
+date: "3 de enero de 2019"
 output: html_document
 ---
 
@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # 1. Introducción
+
 El proyecto a realizar trata de un estudio entre una red MLP convencional y una red de convolución. Se realizara una comparación con la ayuda de un conjunto de datos: CIFAR-10.
 
 Nuestra red convolucional está formada por dos tipos de capas: convolución y pooling. Gracias a esto deberíamos obtener mejores resultados durante el aprendizaje en compración con la red MLP, especificamente en el accuracy.
@@ -17,16 +18,16 @@ Nuestra red convolucional está formada por dos tipos de capas: convolución y p
 En los siguientes apartados se estudiara el funcionamientos de las tecnicas mecionadas anteriormente y se compararan los resultados para ver si se cumplen nuestras suposiciones sobre el funcionamiento.
 
 
+### Librerias necesarias
 
-# Librerias necesarias 
 ```{r}
 library(caret)
 library(keras)
 ```
 
 
+### Conjunto CIFAR-10
 
-# Conjunto CIFAR-10
 Se cargan los datos y se muestran.
 
 ```{r}
@@ -52,8 +53,8 @@ cifar10$test$y = cifar10$test$y[mask,]
 str(cifar10)
 ```
 
-Con esto hemos creado el modelo de datos. Se puede ver que hay dos conjuntos: train y test. El conjunto de entrenamiento está formado por 1000 muestras y tiene imágenes de 32 x 32 (dimesiones) y 3 canales de color RGB, mientras que el test está formado por 2000 muestras.
 
+Con esto hemos creado el modelo de datos. Se puede ver que hay dos conjuntos: train y test. El conjunto de entrenamiento está formado por 1000 muestras y tiene imágenes de 32 x 32 (dimesiones) y 3 canales de color RGB, mientras que el test está formado por 2000 muestras.
 
 Se muestran los ejemplos que hay por clase en el conjunto train.
 
@@ -64,14 +65,14 @@ barplot(table(cifar10$train$y),main="Tipos de imágenes en cifar10 (train set)",
 
 
 Y en el conjunto test.
+
 ```{r}
 barplot(table(cifar10$test$y),main="Tipos de imágenes en cifar10 (test set)",
         xlab="Tipos de imágenes")
 ```
 
+
 Se puede observar que existe una proporcionalidad similar entre los ejemplos de ambos conjuntos.
-
-
 
 Se aplica una transformación a los conjuntos.
 
@@ -91,6 +92,7 @@ x_test = array_reshape(x_test,c(nrow(x_test), 3072))
 x_train = array_reshape(x_train,c(nrow(x_train), 3072))
 ```
 
+
 Seguidamente, comprobamos la separabilidad de los objetos usando un gráfico PCA. Se usa el grafico PCA el conjunto test y se colorea cada dígito en funcion del ejemplar a representar.
 
 ```{r}
@@ -109,7 +111,7 @@ legend("topright",fill=cos,
 ```
 
 
-Ahora normalizamos los colores en [0,1] dividiendo entre el valor 255, que seriá el maximo, para el conjunto x_train y x_test.
+Ahora normalizamos los colores en 0 y 1 dividiendo entre el valor 255, que seriá el maximo, para el conjunto x_train y x_test.
 
 ```{r}
 max(x_test)
@@ -120,8 +122,8 @@ x_train <- x_train / 255
 ```
 
 
-
 Se convierten en datos categóricos y_train y y_test.
+
 ```{r}
 str(y_train)
 y_train[1]
@@ -140,6 +142,7 @@ Ahora, por ejemplo, un tipo de imagen 1 se codifica de la forma: 0 1 0 0 0 0 0 0
 
 
 # 2. MLP Convencional
+
 Primero debemos crear nuestro modelo secuencial. Las capas de red se definen desde la entrada a la salida, definiendo así la dirección del flujo de datos. Este modelo está definido por capas y la salida de una pasa a las entradas de las siguientes mediante una tubería.
 
 ```{r}
@@ -160,8 +163,6 @@ En la capa oculta, la función sigmoide recopila información sobre todo pixel d
 En la capa de la salida, la función softmax convierte toda la información entre la capa oculta y la de salida en una distribución de probabilidades para los 10 tipos de imágenes.
 
 Por otra parte, en el modelo secuencial se hara uso del operador %% para poder añadir en orden las capas. Se usara layer_dense para conectar los nodos de una capa anterior con la siguiente.
-
-
 
 Lanzamos el algoritmo como hemos explicado antes. Vamos a probar distintos hiperparámetros para observar sus resultados. Primero cambiamos el tamaño del bach.
 
@@ -216,10 +217,11 @@ plot(y=acctvals,x=bsize,ylab="Accuracy",xlab="batch size",main="Valores de accur
 lines(x=bsize,y=accvvals,col="red")
 ```
 
-A continuación cambiamos el número de nodos ocultos.
+
+A continuación, cambiamos el número de nodos ocultos.
 
 ```{r}
-nhidden = c(48,96,192,256,512)
+n_hidden = c(48,96,192,256,512)
 
 bsize = b_final
 nepochs = 50
@@ -229,7 +231,7 @@ acc = 0
 accvvals = NULL
 acctvals = NULL
 
-for(h in nhidden){
+for(h in n_hidden){
   set.seed(12345)
   model = keras_model_sequential()
   model %>%
@@ -250,23 +252,28 @@ for(h in nhidden){
 
   cat("Los errores de entrenamiento y evaluación para",h,"nodos son", history$metrics$loss[nepochs],"y", history$metrics$val_loss[nepochs],"\n")
   cat("Los valores de accuracy de entrenamiento y evaluación para",h,"nodos son",history$metrics$acc[nepochs],"y",  history$metrics$val_acc[nepochs],"\n")
+  
   accvvals = c(accvvals,history$metrics$val_acc[nepochs])
   acctvals = c(acctvals,history$metrics$acc[nepochs])
+  
   if(history$metrics$val_acc[nepochs]>acc){
     acc = history$metrics$val_acc[nepochs]
     h_final = h
   }
 }
+
 ymin = min(c(accvvals,acctvals))
-plot(y=acctvals,x=nhidden,ylab="Accuracy",xlab="nodos ocultos",main="Valores de accuracy para entrenamiento/test a través epochs",col="blue",ylim=c(ymin,1),type="l")
-lines(x=nhidden,y=accvvals,col="red")
+plot(y=acctvals,x=n_hidden,ylab="Accuracy",xlab="nodos ocultos",main="Valores de accuracy para entrenamiento/test a través epochs",col="blue",ylim=c(ymin,1),type="l")
+lines(x=n_hidden,y=accvvals,col="red")
 ```
 
 ```{r}
 cat("Los hiperparámetros escogidos son: bach size",b_final,"y el número de nodos ocultos: ", h_final)
 ```
 
+
 ## 2.1. Overfitting MLP
+
 El ovverfitting ocurre cuando el Backpropagation se dedica a ajustar la red a pequeñas particularidades locales en los datos de entrenamiento, irrelevantes para el problema general.
 
 Lanzamos la nueva red con los parámetros finales.
@@ -293,6 +300,7 @@ set.seed(12345)
   )
 ```
 
+
 Mostramos gráficamente los errores de entranamiento y validación a lo largo de los epochs.
 
 ```{r}
@@ -308,9 +316,10 @@ Vemos en los resultados que el error de validación empeora tras un número de e
 Aplicamos varias técnicas para tratar el overfitting
 
 ### 2.1.1. L1
-#ref =https://towardsdatascience.com/l1-and-l2-regularization-methods-ce25e7fc831c
-La tecnica L1 de regularización o tambien llamada Lasso Regression, limita la capacidad de la red actuando en su algoritmo de entrenamiento, añadiendo en la función de perdida un coeficiente de penaliación en función de sus valores abosultos.
 
+#ref =https://towardsdatascience.com/l1-and-l2-regularization-methods-ce25e7fc831c
+
+La técnica L1 de regularización o también llamada Lasso Regression, limita la capacidad de la red actuando en su algoritmo de entrenamiento, añadiendo en la función de perdida un coeficiente de penaliación en función de sus valores abosultos.
 
 ```{r}
 model_b = keras_model_sequential()
@@ -340,7 +349,7 @@ history_b = model_b %>% fit(
 
 ### 2.1.2. L2
 
-La técina L2 de regularización o también llamada Ridge Regression. Es una técnica muy parecida a L1 pero esta utiliza los cuadrados en lugar de los valores absolutos.
+La técina L2 de regularización o también llamada Ridge Regression, es una técnica muy parecida a L1 pero esta utiliza los cuadrados en lugar de los valores absolutos.
 
 ```{r}
 model_c = keras_model_sequential()
@@ -371,7 +380,9 @@ history_c = model_c %>% fit(
 
 ```
 
+
 ### 2.1.3. Dropout
+
 Esta técnica consiste en establecer a 0 una fracción del input (establecida al 50%) en cada actualización durante el proceso de entrenamiento, con lo que conseguimos prevenir el overfitting.
 
 ```{r}
@@ -399,9 +410,7 @@ history_d = model_d %>% fit(
 ```
 
 
-
-
-Y ahora comparamos los distintos modelos
+Y ahora comparamos los distintos modelos.
 
 ```{r}
 vymax = max(c(history$metrics$loss,
@@ -412,8 +421,10 @@ vymax = max(c(history$metrics$loss,
               history_c$metrics$val_loss,
               history_d$metrics$loss,
               history_d$metrics$val_loss))
+
 plot(history$metrics$loss,main="Training/Validation errors for small cifar10",col="blue",
      type="l",xlab="Epochs",ylab="Loss",ylim=c(1.5,vymax))
+
 lines(history$metrics$val_loss,col="red")
 lines(history_b$metrics$loss,col="green")
 lines(history_b$metrics$val_loss,col="darkgreen")
@@ -437,7 +448,7 @@ legend("topright",fill=c("blue","red","green","darkgreen",
 ```
 
 
-Evaluamos con el conjunto test
+Evaluamos con el conjunto test:
 
 ```{r}
 results = NULL
@@ -453,9 +464,10 @@ print(accs)
 
 
 ### 2.1.4. Crossvalidación para comprobar los resultados
-Después de corregir el overfiting hay que asegurar que el modelo mantiene el acurracy mostrado, y para esto utilizamos la crosvalidación.
-Es una tecnica utilizada para evaluar los resultados y garantizar que son idenpendientes de la partición entre el conjunto train y test.
 
+Después de corregir el overfiting hay que asegurar que el modelo mantiene el acurracy mostrado, y para esto utilizamos la crosvalidación.
+
+Es una tecnica utilizada para evaluar los resultados y garantizar que son idenpendientes de la partición entre el conjunto train y test.
 
 ```{r}
 set.seed(12345)
@@ -520,9 +532,6 @@ cat("El accuracy para MLP + dropout es",mean(accsdrop),"\n")
 ```
 
 
-
-
-
 # 3. Red de convolución
 
 Ahora crearemos una red de convolución (RC) para conseguir mejorar los resultados del caso anterior.
@@ -584,7 +593,7 @@ cat('x_train_shape:', dim(train_x), '\n')
 cat(nrow(train_x), 'train samples\n')
 cat(nrow(test_x), 'test samples\n')
 
-# Convert class vectors to binary class matrices
+# Coversión a matrices
 train_y <- to_categorical(train_y, num_classes)
 test_y <- to_categorical(test_y, num_classes)
 
@@ -593,31 +602,26 @@ test_y <- to_categorical(test_y, num_classes)
 
 ## 3.1 Definición del modelo
 
-A la entrada de las neuronas se le pasará un producto escalar y usaremos una función de activación RELU y para la salida aplicaremos activación tipo softmax. 
+Para crear el modelo vamos a querer tener el control sobre el overfitting, por ello vamos a aplicar dropout.
 
+A la entrada de las neuronas se le pasará el filtro genera un mapa de activación como mencionamos anteriormente. A continuación, usamos una función de activación RELU y también aplicamos activación tipo softmax. 
 
-Estos modelos los vamos a construir directamente aplic?ndoles dropout, ya que ha sido la mejor t?cnica para la red MLP. De esta forma nos aseguramos que el overfitting va a estar controlado.
+En la primera capa tenemos 32 filtros con 4x4=16 pesos cada uno, lo que nos resulta en 16x32+32=544 parámetros, 16 pesos por cada filtro y un sesgo por cada filtro.
 
-Las capas de convoluci?n se a?aden como paso previo, esto permite reducir las caracter?sticas de las im?genes a las m?s interesantes y nos permiten distinguir unas de otras. Este proceso se lleva a cabo con una matriz de pesos que da lugar a un mapa de activaci?n, que ser? la entrada a nuestra red.
+En la segunda capa utilizamos 64 filtros, con 4x4 = 16 pesos por cada profundidad, 544x64+64=34880 pesos.
 
-En la primera capa utilizamos 32 filtros, con 3x3 = 9 (tama?o de la matriz) pesos cada uno, lo que nos da 9x32+32 = 320 par?metros, donde 9x32 son los pesos en total de esta capa y lo 32 restantes son los sesgos introducidos por los filtros, en este caso 1 por filtro.
+De recorrer la imagen original con el filtro obtendremos el map de activación. Este será (a-r+1)x(b-c+1) = (32-4+1)x(32-4+1) = 29x29 = 841, lo que genera un volumen de salida de 29x29x32.
 
-En la segunda capa utilizamos 64 filtros, con 3x3 = 9 pesos por cada profundidad, lo que equivale a 3x32 = 288 pesos por filtro, dando un total de 288x64 = 18432 pesos, y 64 sesgos, uno por filtro.
-
-Por tanto, en total utilizamos 32+64 = 96 filtros, con un total de 320+18432+64 = 18816 pesos.
-
-El mapa de activaci?n es el resultado de recorrer la imagen original con la matriz de pesos, en nuestro caso 3 x 3. Por tanto, nuestro mapa de activaci?n es (a-r+1)x(b-c+1) = (32-3+1)x(32-3+1) = 30x30 = 900, lo que genera un volumen de salida de 30x30x32.
-
-Para la elecci?n de hiper-par?metros a utilizar, usaremos dos bucles para determinar, en el primero, cu?l es el mejor n?mero de nodos ocultos y, en el segundo, cu?l es el tama?o de bach m?s adecuado. Teniendo en cuenta los accuracy que aporte cada hiper-par?metro, se seleccionar? el de mayor valor y se realizar? la crossvalidaci?n con esa configuraci?n.
+Para saber que hiper-parámetros seleccionar entre los números de nodos ocultos y los tamaños de bach, vamos a ejecutar un bucle donde obtendremos el best_nh, el nodo con mejor accuracy, y con otro bucle comprobaremos que tamaño de bach se ajusta mejor. Una vez escogidos los mejores valores haremos la crossvalidación con esas preferencias.
 
 ```{r}
-nhidden = c(48,96,192)
-acc2 = 0
-h_final2 = 48
+n_hidden = c(48,96,192)
+best_acc = 0
+best_nh = 48
 accvvals2 = NULL
 acctvals2 = NULL
 
-for(h in nhidden){
+for(h in n_hidden){
   model2 <- keras_model_sequential()
   model2 %>%
     layer_conv_2d(filters = 32, kernel_size = c(4,4), activation = 'relu',input_shape = input_shape) %>% 
@@ -648,33 +652,34 @@ for(h in nhidden){
   
   
   cat("Errores de entrenamiento y evaluación para ",h," nodos son:", history2$metrics$loss[nepochs], " y ", history2$metrics$val_loss[nepochs],"\n")
-  cat("Valores de accuracy de entrenamiento y evaluación para ",h," nodos son:", history2$metrics$acc[nepochs], " y ", history2$metrics$val_acc[nepochs],"\n")
+  cat("Accuracy de entrenamiento y evaluación para ",h," nodos son:", history2$metrics$acc[nepochs], " y ", history2$metrics$val_acc[nepochs],"\n")
   
   accvvals2 = c(accvvals2,history2$metrics$val_acc[nepochs])
   acctvals2 = c(acctvals2,history2$metrics$acc[nepochs])
   
   # Guardar el nº de nodos que de mejor accuracy
-  if(history2$metrics$val_acc[nepochs]>acc2){
-    acc2 = history2$metrics$val_acc[nepochs]
-    h_final2 = h
+  if(history2$metrics$val_acc[nepochs]>best_acc){
+    best_acc = history2$metrics$val_acc[nepochs]
+    best_nh = h
   }
 }
 
 ymin = min(c(accvvals2,acctvals2))
-plot(y=acctvals2,x=nhidden,ylab="Accuracy",xlab="hidden nodes",main="Accuracy train/test a traves de epochs",col="blue",ylim=c(ymin,1),type="l")
-lines(x=nhidden,y=accvvals2,col="red")
+plot(y=acctvals2,x=n_hidden,ylab="Accuracy",xlab="hidden nodes",main="Accuracy train/test por epochs", col="blue", ylim=c(ymin,1), type="l")
+lines(x=n_hidden,y=accvvals2,col="red")
 ```
 
-Como se ha probado con bsize a 128 ahora vamos a ver qué valor de la variable mejoraría el accuracy.
+
+Como la prueba de antes era con bsize=128, ahora vamos a ver qué valor de la bsize podría mejorar el accuracy (si es posible).
 
 ```{r}
 bsize = c(256,512)
-h = h_final2
 acc = 0
-b_final2 = 128
-acc_bsize = acc2
+best_bsize = 128
+acc_bsize = best_acc
 accvvals2 = NULL
 acctvals2 = NULL
+
 for(b in bsize){
   model2 <- keras_model_sequential()
   model2 %>%
@@ -683,7 +688,7 @@ for(b in bsize){
     layer_max_pooling_2d(pool_size = c(2, 2)) %>% 
     layer_dropout(rate = 0.25) %>% 
     layer_flatten() %>% 
-    layer_dense(units = h, activation = 'relu') %>% 
+    layer_dense(units = best_nh, activation = 'relu') %>% 
     layer_dropout(rate = 0.5) %>% 
     layer_dense(units = num_classes, activation = 'softmax')
   
@@ -701,25 +706,25 @@ for(b in bsize){
   scores2 <- model2 %>% evaluate( test_x, test_y, verbose = 0 )
   
   
-  cat("Los errores de entrenamiento y evaluación para ", b, " batch size son " , history2$metrics$loss[nepochs]," y ", history2$metrics$val_loss[nepochs], "\n")
-  cat("Los valores de accuracy de entrenamiento y evaluación para ", b, " batch size son ", history2$metrics$acc[nepochs], " y ", history2$metrics$val_acc[nepochs], "\n")
+  cat("Errores de entrenamiento y evaluación para ", b, " batch size son: " , history2$metrics$loss[nepochs]," y ", history2$metrics$val_loss[nepochs], "\n")
+  cat("Accuracy de entrenamiento y evaluación para ", b, " batch size son: ", history2$metrics$acc[nepochs], " y ", history2$metrics$val_acc[nepochs], "\n")
   
   accvvals2 = c(accvvals2,history2$metrics$val_acc[nepochs])
   acctvals2 = c(acctvals2,history2$metrics$acc[nepochs])
   
   if(history2$metrics$val_acc[nepochs]>acc_bsize){
     acc_bsize = history2$metrics$val_acc[nepochs]
-    b_final2 = b
+    best_bsize = b
   }
 }
 
 ymin = min(c(accvvals2,acctvals2))
-plot(y=acctvals2, x=bsize, ylab="Accuracy", xlab="batch size", main="Valores accuracy entrenamiento/test batch size", col="blue", ylim=c(ymin,1), type="l")
+plot(y=acctvals2, x=bsize, ylab="Accuracy", xlab="batch size", main="Accuracy entrenamiento/test batch size", col="blue", ylim=c(ymin,1), type="l")
 lines(x=bsize, y=accvvals2, col="red")
 ```
 
 ```{r}
-cat("Hiperparámetros elegidos: bach size",b_final2," y número de nodos ocultos", h_final2)
+cat("Hiperparámetros seleccionados: ",best_bsize," bach size y ", best_nh, "nº de nodos ocultos")
 ```
 
 
@@ -731,11 +736,12 @@ k=5
 folds = createFolds(y=cifar10$train$y,k=k)
 allindex = 1:length(cifar10$train$y)
 accs = accsdrop = NULL
+
 for(i in 1:k){
    eval_index = folds[[i]]
    train_index = allindex[!(allindex %in% eval_index)]
-   cat("Trabajando en el pliegue ",i," con ",length(train_index), " ejemplos de entrenamiento y ", length(eval_index),
-       " ejemplos de evaluación\n")
+   cat("Pliegue ",i," con ",length(train_index), " ejemplos de train y ", length(eval_index),
+       " ejemplos de test\n")
    
    model <- keras_model_sequential()
    model %>%
@@ -745,27 +751,41 @@ for(i in 1:k){
      layer_max_pooling_2d(pool_size = c(2, 2)) %>%
      layer_dropout(rate = 0.25) %>%
      layer_flatten() %>%
-     layer_dense(units = h_final2, activation = 'relu') %>%
+     layer_dense(units = best_nh, activation = 'relu') %>%
      layer_dropout(rate = 0.5) %>%
      layer_dense(units = num_classes, activation = 'softmax')
    
    summary(model)
    model %>% compile( loss = loss_categorical_crossentropy, optimizer = 'adam', metrics = c('accuracy') )
    
-   history = model %>% fit( train_x, train_y, batch_size=b_final2, epochs=nepochs, verbose=0,
+   history = model %>% fit( train_x, train_y, batch_size=best_bsize, epochs=nepochs, verbose=0,
                             validation_data=list(train_x[eval_index,,,], train_y[eval_index,])
    )
-  cat("Nuevo accuracy para CNN, pliegue",i,"=",history$metrics$val_acc[nepochs],"\n")
+  cat("Accuracy para CNN, pliegue ",i,"=",history$metrics$val_acc[nepochs],"\n")
   accsdrop = c(accsdrop, history$metrics$val_acc[nepochs])
 }
-cat("El accuracy para la CNN con dropout es",mean(accsdrop),"\n")
+cat("Accuracy para la CNN con dropout es ",mean(accsdrop),"\n")
 ```
 
 
 
 # 4. Conclusión
 
-Como se puede observar a partir de los resultados obtenidos, la red neuronal obtiene resultados bastante mejores que la MLP. Esto se debe a que es una red m?s compleja y, aunque computacionalmente sea m?s costosa, aprende mejor con el mismo conjunto de datos.
+Comparando los resultados obtenidos con un modelo MLP convencional y un modelo de Red de Convolución, hemos podido observar que RC al ser una red más compleja y aunque invierte un poco más de tiempo para la ejecucción, ha podido aprender mejor partiendo de un mismo conjunto de datos ambos modelos.
 
 
 # 5. Bibliografía
+
+[1] Sesiones de Redes Neuronales y Convolución - Juan A. Botía - Aulavirtual.
+
+[2] *https://github.com/rstudio/keras*
+
+[3] *https://keras.io/*
+
+[4] *https://www.cs.toronto.edu/~kriz/cifar.html*
+
+[5] *https://www.rdocumentation.org/*
+
+[6] *https://medium.com/@ab9.bhatia/set-up-gpu-accelerated-tensorflow-keras-on-windows-10-with-anaconda-e71bfa9506d1*
+
+[7] *https://medium.com/@raza.shahzad/setting-up-tensorflow-gpu-keras-in-conda-on-windows-10-75d4fd498198*
