@@ -18,11 +18,12 @@ Nuestra red convolucional está formada por dos tipos de capas: convolución y p
 En los siguientes apartados se estudiara el funcionamientos de las tecnicas mecionadas anteriormente y se compararan los resultados para ver si se cumplen nuestras suposiciones sobre el funcionamiento.
 
 
-### Librerias necesarias
+### Librerías RStudio
 
-```{r}
+```{r, warning=FALSE,results="hide",include=FALSE}
 library(caret)
 library(keras)
+library(tensorflow)
 ```
 
 
