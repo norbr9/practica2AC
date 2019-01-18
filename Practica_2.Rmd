@@ -22,8 +22,6 @@ En los siguientes apartados se estudiara el funcionamientos de las tecnicas meci
 ```{r}
 library(caret)
 library(keras)
-install_keras(tensorflow = "1.5")
-
 ```
 
 
@@ -33,18 +31,24 @@ Se cargan los datos y se muestran.
 
 ```{r}
 set.seed(12345)
+
 dswsize = 10000
 dsevalwsize = 2000
-c <- dataset_cifar10()
-cifar10 <- c
+
+cifar10 <- dataset_cifar10()
+
 dssize = 50000
 mask = sample(1:dssize,dswsize)
+
 cifar10$train$x = cifar10$train$x[mask,,,]
 cifar10$train$y = cifar10$train$y[mask,]
+
 dssizeeval = 10000
 mask = sample(1:dssizeeval,dsevalwsize)
+
 cifar10$test$x = cifar10$test$x[mask,,,]
 cifar10$test$y = cifar10$test$y[mask,]
+
 str(cifar10)
 ```
 
@@ -54,14 +58,14 @@ Con esto hemos creado el modelo de datos. Se puede ver que hay dos conjuntos: tr
 Se muestran los ejemplos que hay por clase en el conjunto train.
 
 ```{r}
-barplot(table(cifar10$train$y),main="Proporción de tipos de imágenes en cifar10 (training data)",
+barplot(table(cifar10$train$y),main="Tipos de imágenes en cifar10 (train set)",
         xlab="Tipos de imágenes")
 ```
 
 
 Y en el conjunto test.
 ```{r}
-barplot(table(cifar10$test$y),main="Proporción de tipos de imágenes en cifar10 (test data)",
+barplot(table(cifar10$test$y),main="Tipos de imágenes en cifar10 (test set)",
         xlab="Tipos de imágenes")
 ```
 
@@ -72,32 +76,35 @@ Se puede observar que existe una proporcionalidad similar entre los ejemplos de 
 Se aplica una transformación a los conjuntos.
 
 ```{r}
-x_train <- cifar10$train$x
-y_train <- cifar10$train$y
 x_test <- cifar10$test$x
 y_test <- cifar10$test$y
+
+x_train <- cifar10$train$x
+y_train <- cifar10$train$y
 ```
 
 
 Y ahora hacemos reshape para generar arrays en el formato que usará R. R alamacena las cosas de forma lineal, por lo que la matriz genera 3072 índices, que son las dimensiones del array.
 
 ```{r}
-x_train = array_reshape(x_train,c(nrow(x_train), 3072))
 x_test = array_reshape(x_test,c(nrow(x_test), 3072))
+x_train = array_reshape(x_train,c(nrow(x_train), 3072))
 ```
 
 Seguidamente, comprobamos la separabilidad de los objetos usando un gráfico PCA. Se usa el grafico PCA el conjunto test y se colorea cada dígito en funcion del ejemplar a representar.
 
 ```{r}
 n = 10000
+
 pca = prcomp(t(x_train[mask,]))
-cols = rainbow(10)
-colors = cols[1 + y_train[mask]]
-plot(pca$rotation[,1],pca$rotation[,2],col=colors,pch=19,
+cos = rainbow(10)
+colores = cos[1 + y_train[mask]]
+
+plot(pca$rotation[,1],pca$rotation[,2],col=colores,pch=19,
      xlab="1er PCA",ylab="2o PCA",main=paste0("PCA plot, ",n," imágenes cifar10"))
-legend("topright",fill=cols,
+legend("topright",fill=cos,
        title="Tipos de imágenes",
-       col=cols,
+       col=cos,
        legend=0:9,cex=0.6)
 ```
 
@@ -105,10 +112,11 @@ legend("topright",fill=cols,
 Ahora normalizamos los colores en [0,1] dividiendo entre el valor 255, que seriá el maximo, para el conjunto x_train y x_test.
 
 ```{r}
-max(x_train)
 max(x_test)
-x_train <- x_train / 255
+max(x_train)
+
 x_test <- x_test / 255
+x_train <- x_train / 255
 ```
 
 
@@ -118,8 +126,11 @@ Se convierten en datos categóricos y_train y y_test.
 str(y_train)
 y_train[1]
 y_train[3]
-y_train <- to_categorical(y_train, 10)
+
 y_test <- to_categorical(y_test, 10)
+y_train <- to_categorical(y_train, 10)
+
+
 str(y_train)
 y_train[1,]
 y_train[3,]
@@ -133,6 +144,7 @@ Primero debemos crear nuestro modelo secuencial. Las capas de red se definen des
 
 ```{r}
 model = keras_model_sequential()
+
 model %>%
   layer_dense(units = 32, input_shape = c(3072)) %>%
   layer_activation('relu') %>%
@@ -155,28 +167,33 @@ Lanzamos el algoritmo como hemos explicado antes. Vamos a probar distintos hiper
 
 ```{r}
 bsize = c(16,32,64,128,256,512,1024)
-nepochs = 50
+
 h = 50
-accvvals = NULL
-acctvals = NULL
+nepochs = 50
 h_final = 16
 acc = 0
+
+accvvals = NULL
+acctvals = NULL
+
+
 for(b in bsize){
     set.seed(12345)
-    #Conectamos todos los nodos de la capa anterior con los de la siguiente
+
+    #Conectar todos los nodos de la capa anterior con los de la siguiente
     model = keras_model_sequential()
     model %>%
       layer_dense(units = h, activation = 'sigmoid', input_shape = c(3072)) %>%
       layer_dense(units = 10, activation = 'softmax')
     
-    #Compilamos el modelo
+    #Compilar el modelo
     model %>% compile(
       loss = 'categorical_crossentropy',
       optimizer = 'adam',
       metrics = c('accuracy')
     )
     
-    #Entrenamos el modelo
+    #Entrenar el modelo
     history = model %>% fit(
       x_train, y_train,
       epochs = nepochs,
@@ -203,12 +220,15 @@ A continuación cambiamos el número de nodos ocultos.
 
 ```{r}
 nhidden = c(48,96,192,256,512)
+
 bsize = b_final
 nepochs = 50
-accvvals = NULL
-acctvals = NULL
 h_final = 48
 acc = 0
+
+accvvals = NULL
+acctvals = NULL
+
 for(h in nhidden){
   set.seed(12345)
   model = keras_model_sequential()
@@ -227,6 +247,7 @@ for(h in nhidden){
     validation_split = 0.2,
     verbose = 0
   )
+
   cat("Los errores de entrenamiento y evaluación para",h,"nodos son", history$metrics$loss[nepochs],"y", history$metrics$val_loss[nepochs],"\n")
   cat("Los valores de accuracy de entrenamiento y evaluación para",h,"nodos son",history$metrics$acc[nepochs],"y",  history$metrics$val_acc[nepochs],"\n")
   accvvals = c(accvvals,history$metrics$val_acc[nepochs])
@@ -242,7 +263,7 @@ lines(x=nhidden,y=accvvals,col="red")
 ```
 
 ```{r}
-cat("Finalmente, los hiperparámetros escogidos son: bach size",b_final,"y número de nodos ocultos", h_final)
+cat("Los hiperparámetros escogidos son: bach size",b_final,"y el número de nodos ocultos: ", h_final)
 ```
 
 ## 2.1. Overfitting MLP
@@ -252,6 +273,7 @@ Lanzamos la nueva red con los parámetros finales.
 
 ```{r}
 set.seed(12345)
+
   model = keras_model_sequential()
   model %>%
     layer_dense(units = h_final, activation = 'sigmoid', input_shape = c(3072)) %>%
@@ -261,6 +283,7 @@ set.seed(12345)
     optimizer = 'adam',
     metrics = c('accuracy')
   )
+
   history = model %>% fit(
     x_train, y_train,
     epochs = nepochs,
@@ -274,6 +297,7 @@ Mostramos gráficamente los errores de entranamiento y validación a lo largo de
 
 ```{r}
 vymax = max(c(history$metrics$loss,history$metrics$val_loss))
+
 plot(history$metrics$loss,main="Erores de entrenamiendo/validación para cifar10",col="blue", type="l",xlab="Epochs",ylab="Loss",ylim=c(0,vymax))
 lines(history$metrics$val_loss,col="red")
 ```
@@ -320,6 +344,7 @@ La técina L2 de regularización o también llamada Ridge Regression. Es una té
 
 ```{r}
 model_c = keras_model_sequential()
+
 model_c %>%
   layer_dense(units = h_final,
               #Podemos usar regularizer_l1, regularizer_l2
@@ -336,6 +361,7 @@ model_c %>% compile(
   optimizer = 'adam',
   metrics = c('accuracy')
 )
+
 history_c = model_c %>% fit(
   x_train, y_train,
   epochs = 50,
@@ -350,6 +376,7 @@ Esta técnica consiste en establecer a 0 una fracción del input (establecida al
 
 ```{r}
 model_d = keras_model_sequential()
+
 model_d %>%
   layer_dense(units = h_final, activation="sigmoid",
               input_shape = c(3072)) %>%
@@ -362,6 +389,7 @@ model_d %>% compile(
   optimizer = 'adam',
   metrics = c('accuracy')
 )
+
 history_d = model_d %>% fit(
   x_train, y_train,
   epochs = 50,
@@ -431,11 +459,13 @@ Es una tecnica utilizada para evaluar los resultados y garantizar que son idenpe
 
 ```{r}
 set.seed(12345)
+
 k=5
 nepochs = 50
 folds = createFolds(y=cifar10$train$y,k=k)
 allindex = 1:length(cifar10$train$y)
 accs = accsdrop = NULL
+
 for(i in 1:k){
   eval_index = folds[[i]]
   train_index = allindex[!(allindex %in% eval_index)]
@@ -484,6 +514,7 @@ for(i in 1:k){
   cat("Nuevo accuracy MLP + dropout, pliegue",i,"=",history_d$metrics$val_acc[nepochs],"\n")
   accsdrop = c(accsdrop,history_d$metrics$val_acc[nepochs])
 }
+
 cat("El accuracy para MLP es",mean(accs),"\n")
 cat("El accuracy para MLP + dropout es",mean(accsdrop),"\n")
 ```
